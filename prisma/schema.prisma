@@ -10,4 +10,96 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+
+}
+
+enum ProjectLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  SCHEDULED
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Tag {
+  id   String @id @default(cuid())
+  name String @unique
+  slug String @unique
+
+  projects Project[] @relation("ProjectTags")
+  articles Article[] @relation("ArticleTags")
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  slug         String        @unique
+  title        String
+  shortSummary String
+  description  String        @db.Text
+  level        ProjectLevel
+  featured     Boolean       @default(false)
+  status       ContentStatus @default(DRAFT)
+  demoUrl      String?
+  githubUrl    String?
+  realizedAt   DateTime
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  tags   Tag[]          @relation("ProjectTags")
+  images ProjectImage[]
+
+  @@index([status])
+  @@index([featured])
+}
+
+model ProjectImage {
+  id      String @id @default(cuid())
+  url     String
+  altText String
+  order   Int    @default(0)
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
+  @@index([projectId])
+}
+
+model Article {
+  id          String        @id @default(cuid())
+  slug        String        @unique
+  title       String
+  excerpt     String
+  content     String        @db.Text
+  coverImage  String
+  status      ContentStatus @default(DRAFT)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  tags Tag[] @relation("ArticleTags")
+
+  @@index([status])
+}
+
+model ContactMessage {
+  id         String   @id @default(cuid())
+  name       String
+  email      String
+  message    String   @db.Text
+  read       Boolean  @default(false)
+  receivedAt DateTime @default(now())
+
+  @@index([read])
 }
