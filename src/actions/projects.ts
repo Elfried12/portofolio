@@ -88,6 +88,20 @@ export async function getProjectBySlug(slug: string) {
   });
 }
 
+export async function getAdjacentProjects(slug: string) {
+  const all = await prisma.project.findMany({
+    where: { status: "PUBLISHED" },
+    orderBy: { realizedAt: "desc" },
+    select: { slug: true, title: true },
+  });
+
+  const index = all.findIndex((p) => p.slug === slug);
+  return {
+    prev: index > 0 ? all[index - 1] : null,
+    next: index >= 0 && index < all.length - 1 ? all[index + 1] : null,
+  };
+}
+
 // --- Admin actions (on les utilisera plus tard) ---
 
 export async function createProject(formData: FormData) {
