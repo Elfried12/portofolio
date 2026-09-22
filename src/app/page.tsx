@@ -84,7 +84,7 @@ export default async function HomePage() {
         <div className="flex w-full max-w-xs flex-col items-center gap-4 md:w-auto">
           <div className="h-52 w-52 overflow-hidden rounded-xl bg-muted">
             <img
-              src="/avatar.jpg"
+              src="/dex.jpg"
               alt={PROFILE.name}
               className="h-full w-full object-cover"
             />
@@ -386,7 +386,7 @@ export default async function HomePage() {
               Envoyer un message
             </Link>
             <a
-              href="/cv.pdf"
+              href="/CV_BOTON_Elfried.pdf"
               download
               className="flex items-center gap-2 rounded-md border border-white/20 px-6 py-3 text-base font-medium text-primary-foreground transition-colors hover:bg-white/10"
             >
