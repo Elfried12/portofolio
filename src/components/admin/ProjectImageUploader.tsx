@@ -1,29 +1,58 @@
 "use client";
 
-import { UploadDropzone } from "@/lib/uploadthing";
-import { addProjectImage, deleteProjectImage } from "@/actions/project.actions";
-import { Trash2, UploadCloud } from "lucide-react";
+import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2, UploadCloud } from "lucide-react";
+import { addProjectImage, deleteProjectImage } from "@/actions/project.actions";
 
-type Image = {
-  id: string;
-  url: string;
-  altText: string;
-};
+type Image = { id: string; url: string; altText: string };
 
-type Props = {
+export function ProjectImageUploader({
+  projectId,
+  images,
+}: {
   projectId: string;
   images: Image[];
-};
-
-export function ProjectImageUploader({ projectId, images }: Props) {
+}) {
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  async function onFiles(files: FileList | null) {
+    if (!files?.length) return;
+    setUploading(true);
+
+    try {
+      for (const file of Array.from(files)) {
+        const body = new FormData();
+        body.append("file", file);
+
+        const res = await fetch("/api/upload", { method: "POST", body });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Upload failed");
+
+        await addProjectImage(projectId, data.url, file.name);
+      }
+      router.refresh();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Erreur upload");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function handleDelete(imageId: string) {
+    startTransition(async () => {
+      await deleteProjectImage(imageId);
+      router.refresh();
+    });
+  }
 
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-card p-5">
       <h3 className="font-heading text-sm font-bold text-accent">Images</h3>
 
-      {/* Liste des images existantes */}
       {images.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
           {images.map((img) => (
@@ -36,51 +65,42 @@ export function ProjectImageUploader({ projectId, images }: Props) {
                 alt={img.altText}
                 className="h-28 w-full object-cover"
               />
-              <form
-                action={async () => {
-                  await deleteProjectImage(img.id);
-                  router.refresh();
-                }}
-                className="absolute top-2 right-2"
+              {/* PAS de <form> ici */}
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => handleDelete(img.id)}
+                className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-sm border border-border bg-background text-red-400 opacity-0 transition-opacity group-hover:opacity-100 disabled:opacity-50"
               >
-                <button
-                  type="submit"
-                  className="flex h-7 w-7 items-center justify-center rounded-sm border border-border bg-background text-red-400 opacity-0 transition-opacity group-hover:opacity-100"
-                >
-                  <Trash2 size={12} />
-                </button>
-              </form>
+                <Trash2 size={12} />
+              </button>
             </div>
           ))}
         </div>
       )}
 
-      {/* Dropzone UploadThing */}
-      <UploadDropzone
-        endpoint="projectImage"
-        appearance={{
-          container:
-            "border-2 border-dashed border-border rounded-lg bg-background ut-ready:bg-background ut-uploading:opacity-70",
-          label: "text-sm font-medium text-accent",
-          allowedContent: "text-xs text-muted-foreground",
-          button:
-            "bg-primary text-primary-foreground text-sm font-medium rounded-md ut-ready:bg-primary ut-uploading:bg-primary/70",
-        }}
-        content={{
-          label: "Drop images here or click to upload",
-          allowedContent: "PNG, JPG, WebP — max 4 MB",
-        }}
-        onClientUploadComplete={async (res) => {
-          if (!res) return;
-          for (const file of res) {
-            const url = file.ufsUrl ?? file.url;
-            await addProjectImage(projectId, url, file.name ?? "Project image");
-          }
-          router.refresh();
-        }}
-        onUploadError={(err) => {
-          alert(`Upload error: ${err.message}`);
-        }}
+      <button
+        type="button"
+        disabled={uploading}
+        onClick={() => inputRef.current?.click()}
+        className="flex flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 hover:bg-muted/40 disabled:opacity-50"
+      >
+        <UploadCloud size={24} className="text-muted-foreground" />
+        <p className="text-sm font-medium text-accent">
+          {uploading ? "Upload en cours…" : "Clique pour uploader"}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          PNG, JPG, WebP — max 5 MB
+        </p>
+      </button>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => onFiles(e.target.files)}
       />
     </div>
   );
